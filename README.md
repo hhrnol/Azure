@@ -11,3 +11,7 @@ tfdestroy.yml
 Deploy pipeline for app service.
 Build-Deploy-Pipelines.yml
 </pre>
+<pre>
+Terraform.
+terraform/main.tf
+</pre>
