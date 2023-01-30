@@ -1,0 +1,61 @@
+trigger: none
+
+pool:
+  vmImage: ubuntu-latest
+  
+variables:
+  bkrg:  'RG-tfstate-01'
+  bkstrgacc:  'tfstate011346785992'
+  bkcontainer:  'tfstate'
+  key:  'terraform.tfstate'
+  
+stages:
+  - stage: tfvalidate
+    jobs:
+      - job: validate
+        continueOnError: false
+        steps:
+          - task: TerraformInstaller@0
+            inputs:
+              terraformVersion: 'latest'
+          - task: TerraformTaskV3@3
+            displayName: init
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              backendServiceArm: 'sc-arm'
+              backendAzureRmResourceGroupName: '$(bkrg)'
+              backendAzureRmStorageAccountName: '$(bkstrgacc)'
+              backendAzureRmContainerName: '$(bkcontainer)'
+              backendAzureRmKey: '$(key)'
+          - task: TerraformTaskV3@3
+            displayName: validate
+            inputs:
+              provider: 'azurerm'
+              command: 'validate'
+  - stage: tfdestroy
+    condition: succeeded('tfvalidate')
+    dependsOn: tfvalidate
+    jobs:
+      - job: apply
+        steps:
+          - task: TerraformInstaller@0
+            inputs:
+              terraformVersion: 'latest'
+          - task: TerraformTaskV3@3
+            displayName: init
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              workingDirectory: 'terraform'
+              backendServiceArm: 'sc-arm'
+              backendAzureRmResourceGroupName: '$(bkrg)'
+              backendAzureRmStorageAccountName: '$(bkstrgacc)'
+              backendAzureRmContainerName: '$(bkcontainer)'
+              backendAzureRmKey: '$(key)'
+          - task: TerraformTaskV3@3
+            inputs:
+              provider: 'azurerm'
+              command: 'destroy'
+              workingDirectory: 'terraform'
+              environmentServiceNameAzureRM: 'sc-arm'

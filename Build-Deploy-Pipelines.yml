@@ -1,0 +1,68 @@
+
+name: 'Validation running. Attempt $(builderCounter)'
+
+
+
+trigger:
+- none
+
+variables:
+  -  name: builderCounter
+     value: $[counter('builderCounter', 1)]
+
+stages:
+- stage: Build
+  displayName: 'Build'
+
+  jobs:
+  - deployment: BuildWeb
+    displayName: Build Web App Frontend
+    pool:
+      vmImage: 'ubuntu-latest'
+    environment: 'BuildOnlineStore'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: git://HomeWork/OnlineStore.Web
+
+          - task: NodeTool@0
+            displayName: 'Install Node.js'
+            inputs:
+              versionSpec: '18.x'
+          - script: |
+                      npm install
+                      npm run build
+            displayName: 'npm install build'
+          - task: PublishBuildArtifacts@1
+            inputs:
+              PathtoPublish: 'build'
+              ArtifactName: 'drop'
+              publishLocation: 'Container'
+
+- stage: Deploy
+  displayName: 'Deploy'
+  jobs:
+    - deployment: DeployWeb
+      displayName: Deploy Web App Frontend
+      pool:
+        vmImage: 'ubuntu-latest'
+      environment: 'DeployOnlineStore'
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+            - task: DownloadPipelineArtifact@2
+              inputs:
+                buildType: 'current'
+                targetPath: '$(System.DefaultWorkingDirectory)'
+                artifactName: drop
+            - task: AzureWebApp@1
+              inputs:
+                  azureSubscription: 'sc-arm'
+                  appType: 'webApp'
+                  appName: 'webapp-85064'
+                  package: '$(System.DefaultWorkingDirectory)'
+                  deploymentMethod: 'runFromPackage'
+
+
